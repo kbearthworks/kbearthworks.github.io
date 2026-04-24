@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K&B — KML Permis</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+:root{--bg:#0f1117;--card:#161b27;--card2:#1c2333;--brd:#2a3348;--gold:#d4a853;--green:#3ecf8e;--txt:#e2e8f0;--muted:#64748b;--muted2:#94a3b8}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh}
+
+.topbar{background:var(--card);border-bottom:1px solid var(--brd);padding:0 20px;height:50px;display:flex;align-items:center;gap:10px}
+.bico{width:30px;height:30px;background:var(--gold);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10px;color:#0f1117;flex-shrink:0}
+.bname{font-weight:700;font-size:14px}
+.bname span{color:var(--gold)}
+
+.page{max-width:600px;margin:0 auto;padding:28px 16px 60px}
+.title{margin-bottom:22px}
+.title h1{font-size:20px;font-weight:700}
+.title p{font-size:12px;color:var(--muted);margin-top:3px}
+
+.sec{background:var(--card);border:1px solid var(--brd);border-radius:12px;margin-bottom:12px;overflow:hidden}
+.sh{padding:11px 16px;border-bottom:1px solid var(--brd);background:var(--card2);display:flex;align-items:center;gap:8px}
+.sn{width:20px;height:20px;background:var(--gold);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#0f1117;flex-shrink:0}
+.st{font-size:13px;font-weight:600}
+.sb{padding:16px}
+
+/* PROJ */
+.ptabs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pt{border:1.5px solid var(--brd);border-radius:8px;padding:10px 13px;cursor:pointer;transition:all .15s;position:relative}
+.pt.on{border-color:var(--gold);background:rgba(212,168,83,.06)}
+.pt .pn{font-size:13px;font-weight:600}
+.pt.on .pn{color:var(--gold)}
+.pt .pc{font-size:11px;color:#4a9eff;font-family:'JetBrains Mono';margin-top:2px}
+.pt .pz{font-size:11px;color:var(--muted);margin-top:2px}
+.pt .dot{position:absolute;top:9px;right:9px;width:6px;height:6px;border-radius:50%;background:var(--gold);display:none}
+.pt.on .dot{display:block}
+
+/* POINTS */
+.prow{display:grid;grid-template-columns:70px 1fr 1fr;gap:8px;margin-bottom:8px;align-items:center}
+.prow:last-child{margin-bottom:0}
+.plbl{font-weight:700;font-size:13px;display:flex;align-items:center;gap:6px}
+.pdot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+input.xi{background:var(--bg);border:1px solid var(--brd);border-radius:7px;color:var(--txt);font-family:'JetBrains Mono';font-size:13px;padding:8px 10px;width:100%;transition:border-color .15s}
+input.xi:focus{outline:none;border-color:var(--gold)}
+input.xi::placeholder{color:var(--muted);font-size:11px}
+
+/* PERMIS INFO */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.f{display:flex;flex-direction:column;gap:5px}
+.f label{font-size:11px;font-weight:600;color:var(--muted2);text-transform:uppercase;letter-spacing:.06em}
+.f input{background:var(--bg);border:1px solid var(--brd);border-radius:7px;color:var(--txt);font-family:'Inter',sans-serif;font-size:13px;padding:8px 10px;width:100%;transition:border-color .15s}
+.f input:focus{outline:none;border-color:var(--gold)}
+
+canvas{display:block;width:100%;height:130px;background:var(--bg);border:1px solid var(--brd);border-radius:8px;margin-top:12px}
+
+.btn{width:100%;background:var(--gold);color:#0f1117;border:none;border-radius:9px;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;padding:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .15s;margin-bottom:10px}
+.btn:hover{background:#e0b86a;transform:translateY(-1px)}
+.btn:active{transform:none}
+
+.kout{display:none;background:var(--card);border:1px solid var(--brd);border-radius:12px;overflow:hidden;margin-bottom:10px}
+.kh{padding:9px 14px;background:var(--card2);border-bottom:1px solid var(--brd);display:flex;align-items:center;justify-content:space-between}
+.kht{font-size:12px;font-weight:600;color:var(--green)}
+.kcp{background:var(--green);color:#0f1117;border:none;border-radius:5px;font-size:12px;font-weight:700;padding:5px 12px;cursor:pointer}
+.kcp:hover{background:#5adfab}
+textarea.kt{width:100%;height:160px;background:var(--bg);border:none;color:#3ecf8e;font-family:'JetBrains Mono';font-size:11px;padding:12px;resize:vertical;display:block}
+textarea.kt:focus{outline:none}
+.ki{padding:9px 14px;font-size:11px;color:var(--muted);border-top:1px solid var(--brd)}
+.ki b{color:var(--muted2)}
+
+.toast{display:none;margin-bottom:8px;padding:8px 12px;border-radius:7px;font-size:12px;font-weight:500;background:rgba(62,207,142,.1);border:1px solid rgba(62,207,142,.25);color:var(--green)}
+.foot{margin-top:20px;text-align:center;font-size:11px;color:var(--muted);border-top:1px solid var(--brd);padding-top:14px}
+.foot b{color:var(--gold)}
+
+@media(max-width:480px){.g2,.ptabs{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="bico">K&B</div>
+  <div class="bname">K<span>&</span>B Earth Works — KML Permis</div>
+</div>
+
+<div class="page">
+
+  <div class="title">
+    <h1>4 Points Lambert → KML</h1>
+    <p>Saisir les 4 coins directement → Export KML</p>
+  </div>
+
+  <!-- PROJECTION -->
+  <div class="sec">
+    <div class="sh"><div class="sn">1</div><div class="st">Projection</div></div>
+    <div class="sb">
+      <div class="ptabs">
+        <div class="pt on" id="pN" onclick="setP('n')">
+          <div class="dot"></div>
+          <div class="pn">Lambert Nord</div>
+          <div class="pc">EPSG:26191</div>
+          <div class="pz">Rif · Atlas · Meseta</div>
+        </div>
+        <div class="pt" id="pS" onclick="setP('s')">
+          <div class="dot"></div>
+          <div class="pn">Lambert Sud</div>
+          <div class="pc">EPSG:26192</div>
+          <div class="pz">Anti-Atlas · Sahara</div>
+        </div>
+      </div>
+      <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted2);cursor:pointer;user-select:none">
+          <input type="checkbox" id="noTr" onchange="setNoTr(this.checked)" style="accent-color:var(--gold)">
+          Aucun transformation — X=lon, Y=lat (WGS84 direct)
+        </label>
+        <div style="font-size:11px;color:var(--muted)">
+          Si tu travailles en Lambert (m), laisse décoché pour convertir Lambert → WGS84 (recommandé pour AlpineQuest).
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 POINTS -->
+  <div class="sec">
+    <div class="sh"><div class="sn">2</div><div class="st">4 Coins (mètres Lambert)</div></div>
+    <div class="sb">
+      <div style="background:var(--bg);border:1px solid var(--brd);border-radius:10px;padding:12px;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">
+          Calcul automatique depuis repère
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="f">
+            <label>Repère X</label>
+            <input id="rX" placeholder="ex: 625350.0">
+          </div>
+          <div class="f">
+            <label>Repère Y</label>
+            <input id="rY" placeholder="ex: 513709.08">
+          </div>
+          <div class="f">
+            <label>Delta X (m)</label>
+            <div style="display:grid;grid-template-columns:1fr 110px;gap:8px">
+              <input id="dE" placeholder="ex: 869.50">
+              <select id="dirE" style="background:var(--bg);border:1px solid var(--brd);border-radius:7px;color:var(--txt);font-size:13px;padding:8px 10px;width:100%">
+                <option value="E">Est (+)</option>
+                <option value="W">Ouest (−)</option>
+              </select>
+            </div>
+          </div>
+          <div class="f">
+            <label>Delta Y (m)</label>
+            <div style="display:grid;grid-template-columns:1fr 110px;gap:8px">
+              <input id="dN" placeholder="ex: 1209.92">
+              <select id="dirN" style="background:var(--bg);border:1px solid var(--brd);border-radius:7px;color:var(--txt);font-size:13px;padding:8px 10px;width:100%">
+                <option value="N">Nord (+)</option>
+                <option value="S">Sud (−)</option>
+              </select>
+            </div>
+          </div>
+          <div class="f">
+            <label>Côté (m)</label>
+            <input id="side" placeholder="ex: 4000">
+          </div>
+          <div class="f" style="justify-content:flex-end">
+            <button class="btn" type="button" onclick="calcFromRepere()" style="margin:0;padding:10px;border-radius:8px;font-size:13px">
+              Calculer les 4 points
+            </button>
+          </div>
+        </div>
+        <div style="margin-top:8px;font-size:11px;color:var(--muted)">
+          Formules: centre \(Xc=rX \pm dX\), \(Yc=rY \pm dY\) (selon Est/Ouest, Nord/Sud). Puis demi-côté \(h=side/2\). Coins: NW \((Xc-h,Yc+h)\), NE \((Xc+h,Yc+h)\), SE \((Xc+h,Yc-h)\), SW \((Xc-h,Yc-h)\).
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:70px 1fr 1fr;gap:8px;margin-bottom:8px">
+        <div></div>
+        <div style="font-size:11px;font-weight:600;color:var(--muted2);text-transform:uppercase;text-align:center" id="xh">X (m)</div>
+        <div style="font-size:11px;font-weight:600;color:var(--muted2);text-transform:uppercase;text-align:center" id="yh">Y (m)</div>
+      </div>
+
+      <div class="prow">
+        <div class="plbl"><span class="pdot" style="background:#d4a853"></span>P8 NW</div>
+        <input class="xi" id="x8" value="624000" oninput="upd()">
+        <input class="xi" id="y8" value="517000" oninput="upd()">
+      </div>
+      <div class="prow">
+        <div class="plbl"><span class="pdot" style="background:#4a9eff"></span>P7 NE</div>
+        <input class="xi" id="x7" value="628000" oninput="upd()">
+        <input class="xi" id="y7" value="517000" oninput="upd()">
+      </div>
+      <div class="prow">
+        <div class="plbl"><span class="pdot" style="background:#3ecf8e"></span>P6 SE</div>
+        <input class="xi" id="x6" value="628000" oninput="upd()">
+        <input class="xi" id="y6" value="513000" oninput="upd()">
+      </div>
+      <div class="prow">
+        <div class="plbl"><span class="pdot" style="background:#f472b6"></span>P5 SW</div>
+        <input class="xi" id="x5" value="624000" oninput="upd()">
+        <input class="xi" id="y5" value="513000" oninput="upd()">
+      </div>
+
+      <canvas id="cv" width="568" height="130"></canvas>
+    </div>
+  </div>
+
+  <!-- INFOS PERMIS -->
+  <div class="sec">
+    <div class="sh"><div class="sn">3</div><div class="st">Infos permis <span style="color:var(--muted);font-size:11px;font-weight:400">(optionnel)</span></div></div>
+    <div class="sb">
+      <div class="g2">
+        <div class="f"><label>N° Décision</label><input id="fN" value="3137607"></div>
+        <div class="f"><label>Titulaire</label><input id="fT" value="MANAJIM PRO"></div>
+        <div class="f"><label>Direction Rég.</label><input id="fR" value="Tanger"></div>
+        <div class="f"><label>Date</label><input type="date" id="fD" value="2023-11-29"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OUTPUT -->
+  <div class="kout" id="ko">
+    <div class="kh">
+      <div class="kht">✓ KML prêt</div>
+      <button class="kcp" onclick="cpK()">⎘ Copier</button>
+    </div>
+    <textarea class="kt" id="kt" readonly></textarea>
+    <div class="ki"><b>Notepad</b> → Colle → Sauvegarde <b>.kml</b> → Alpine Quest / Google Earth / QGIS</div>
+  </div>
+
+  <div class="toast" id="ts"></div>
+
+  <button class="btn" onclick="gen()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    Générer KML
+  </button>
+
+  <div class="foot"><b>K&B Earth Works SARL</b> · Lambert Maroc → WGS84</div>
+</div>
+
+<script>
+// Projection standard Lambert Maroc
+// Merchich (Clarke 1880 IGN) → WGS84: TOWGS84[31,146,47,0,0,0,0]
+proj4.defs('EPSG:26191','+proj=lcc +lat_1=33.3 +lat_0=33.3 +lon_0=-5.4 +k_0=0.999625769 +x_0=500000 +y_0=300000 +ellps=clrk80ign +towgs84=31,146,47,0,0,0,0 +units=m +no_defs');
+proj4.defs('EPSG:26192','+proj=lcc +lat_1=29.7 +lat_0=29.7 +lon_0=-5.4 +k_0=0.999615596 +x_0=500000 +y_0=300000 +ellps=clrk80ign +towgs84=31,146,47,0,0,0,0 +units=m +no_defs');
+
+let CRS = 'EPSG:26191';
+let NO_TR = false; // if true: treat X=lon, Y=lat (no transformation)
+const COLS = ['#d4a853','#4a9eff','#3ecf8e','#f472b6'];
+const IDS  = ['8','7','6','5'];
+const LBLS = ['P8 NW','P7 NE','P6 SE','P5 SW'];
+
+function setP(z){
+  CRS = z==='n' ? 'EPSG:26191' : 'EPSG:26192';
+  document.getElementById('pN').classList.toggle('on', z==='n');
+  document.getElementById('pS').classList.toggle('on', z==='s');
+  upd();
+}
+
+function setNoTr(v){
+  NO_TR = !!v;
+  const xh = document.getElementById('xh');
+  const yh = document.getElementById('yh');
+  if(NO_TR){
+    xh.textContent = 'Lon (°)';
+    yh.textContent = 'Lat (°)';
+  }else{
+    xh.textContent = 'X (m)';
+    yh.textContent = 'Y (m)';
+  }
+  upd();
+}
+
+function pts(){
+  return IDS.map(id => ({
+    id,
+    x: parseFloat(document.getElementById('x'+id).value) || 0,
+    y: parseFloat(document.getElementById('y'+id).value) || 0
+  }));
+}
+
+function setXY(id, x, y){
+  const ex = document.getElementById('x'+id);
+  const ey = document.getElementById('y'+id);
+  ex.value = (Number.isFinite(x) ? x : 0);
+  ey.value = (Number.isFinite(y) ? y : 0);
+}
+
+function calcFromRepere(){
+  const rX = parseFloat(document.getElementById('rX').value);
+  const rY = parseFloat(document.getElementById('rY').value);
+  const dE = parseFloat(document.getElementById('dE').value);
+  const dN = parseFloat(document.getElementById('dN').value);
+  const dirE = (document.getElementById('dirE')?.value) || 'E';
+  const dirN = (document.getElementById('dirN')?.value) || 'N';
+  const side = parseFloat(document.getElementById('side').value);
+
+  if(!Number.isFinite(rX) || !Number.isFinite(rY) || !Number.isFinite(dE) || !Number.isFinite(dN) || !Number.isFinite(side) || side<=0){
+    toast('⚠️ Remplis Repère X/Y, Delta Est/Nord, et Côté (m)');
+    return;
+  }
+
+  const sx = (dirE === 'W') ? -1 : 1;
+  const sy = (dirN === 'S') ? -1 : 1;
+  const xc = rX + sx * Math.abs(dE);
+  const yc = rY + sy * Math.abs(dN);
+  const h = side / 2;
+
+  // P8 NW, P7 NE, P6 SE, P5 SW
+  setXY('8', xc - h, yc + h);
+  setXY('7', xc + h, yc + h);
+  setXY('6', xc + h, yc - h);
+  setXY('5', xc - h, yc - h);
+  upd();
+  toast('✓ 4 points calculés depuis repère');
+}
+
+function upd(){ draw(pts()); }
+
+function draw(ps){
+  const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = '#0f1117'; ctx.fillRect(0,0,W,H);
+
+  // grid
+  ctx.strokeStyle = 'rgba(42,51,72,.5)'; ctx.lineWidth = 1;
+  for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+  for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+
+  const xs = ps.map(p=>p.x), ys = ps.map(p=>p.y);
+  const mn=Math.min(...xs), mx=Math.max(...xs);
+  const ml=Math.min(...ys), mh=Math.max(...ys);
+  const pad=26;
+  const tx = x => pad + (x-mn)/(mx-mn+1e-10)*(W-2*pad);
+  const ty = y => H-pad-(y-ml)/(mh-ml+1e-10)*(H-2*pad);
+
+  // fill
+  ctx.beginPath(); ctx.moveTo(tx(ps[0].x),ty(ps[0].y));
+  ps.forEach(p => ctx.lineTo(tx(p.x),ty(p.y)));
+  ctx.closePath(); ctx.fillStyle='rgba(212,168,83,.07)'; ctx.fill();
+
+  // border
+  ctx.strokeStyle='#d4a853'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(tx(ps[0].x),ty(ps[0].y));
+  ps.forEach(p => ctx.lineTo(tx(p.x),ty(p.y)));
+  ctx.closePath(); ctx.stroke();
+
+  // corners
+  ps.forEach((p,i) => {
+    const x=tx(p.x), y=ty(p.y);
+    ctx.beginPath(); ctx.arc(x,y,5,0,Math.PI*2);
+    ctx.fillStyle=COLS[i]; ctx.fill();
+    ctx.font='bold 10px JetBrains Mono,monospace'; ctx.fillStyle=COLS[i];
+    ctx.fillText(LBLS[i].split(' ')[0], x+(i===0||i===3?-30:8), y+(i<2?-10:19));
+  });
+
+  ctx.font='10px Inter,sans-serif'; ctx.fillStyle='rgba(100,116,139,.6)';
+  ctx.fillText(CRS==='EPSG:26191'?'Lambert Nord':'Lambert Sud', 8, H-7);
+}
+
+function gen(){
+  const ps = pts();
+  const n = document.getElementById('fN').value||'—';
+  const t = document.getElementById('fT').value||'—';
+  const r = document.getElementById('fR').value||'—';
+  const d = document.getElementById('fD').value;
+  let ds='—'; if(d){ds=new Date(d).toLocaleDateString('fr-FR');}
+
+  // Convert Lambert → WGS84 (or keep as-is if NO_TR)
+  const pw = ps.map(p => {
+    if(NO_TR){
+      return {...p, lo: p.x, la: p.y};
+    }
+    const [lo,la] = proj4(CRS,'EPSG:4326',[p.x,p.y]);
+    return {...p, lo, la};
+  });
+
+  const ring = [...pw, pw[0]].map(p=>`${p.lo},${p.la},0`).join('\n            ');
+
+  const kml =
+`<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Permis N° ${n} — ${t}</name>
+    <Style id="p">
+      <LineStyle><color>ffd4a853</color><width>2.5</width></LineStyle>
+      <PolyStyle><color>22d4a853</color><fill>1</fill><outline>1</outline></PolyStyle>
+    </Style>
+    <Style id="k">
+      <IconStyle><color>ffd4a853</color><scale>0.9</scale>
+        <Icon><href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href></Icon>
+      </IconStyle>
+      <LabelStyle><color>ffd4a853</color><scale>0.8</scale></LabelStyle>
+    </Style>
+    <Placemark>
+      <name>Permis N° ${n} — ${t}</name>
+      <description><![CDATA[
+        <b>N° Décision :</b> ${n}<br/>
+        <b>Titulaire :</b> ${t}<br/>
+        <b>Direction :</b> ${r}<br/>
+        <b>Date :</b> ${ds}<br/>
+        <b>Projection :</b> ${NO_TR ? 'Aucune (X=lon, Y=lat)' : (CRS==='EPSG:26191'?'Lambert Nord (EPSG:26191)':'Lambert Sud (EPSG:26192)')}<br/>
+        <b>Produit par :</b> K&amp;B Earth Works SARL
+      ]]></description>
+      <styleUrl>#p</styleUrl>
+      <Polygon>
+        <extrude>0</extrude>
+        <altitudeMode>clampToGround</altitudeMode>
+        <outerBoundaryIs>
+          <LinearRing>
+            <coordinates>
+            ${ring}
+            </coordinates>
+          </LinearRing>
+        </outerBoundaryIs>
+      </Polygon>
+    </Placemark>
+${pw.map((p,i)=>`    <Placemark>
+      <name>${LBLS[i]} · X=${p.x} / Y=${p.y}</name>
+      <styleUrl>#k</styleUrl>
+      <Point><coordinates>${p.lo},${p.la},0</coordinates></Point>
+    </Placemark>`).join('\n')}
+  </Document>
+</kml>`;
+
+  document.getElementById('kt').value = kml;
+  document.getElementById('ko').style.display = 'block';
+  document.getElementById('ko').scrollIntoView({behavior:'smooth',block:'nearest'});
+
+  try{
+    const b=new Blob([kml],{type:'application/vnd.google-earth.kml+xml'});
+    const u=URL.createObjectURL(b);
+    const a=document.createElement('a');
+    const safeN = String(n).replace(/[^a-zA-Z0-9_-]+/g,'_');
+    a.href=u; a.download=`Permis_${safeN}_KnB.kml`;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(u);
+  }catch(e){}
+
+  toast(`✓ KML généré — Permis ${n}`);
+}
+
+function cpK(){
+  navigator.clipboard.writeText(document.getElementById('kt').value)
+    .then(()=>toast('✓ KML copié'))
+    .catch(()=>{document.getElementById('kt').select();document.execCommand('copy');toast('✓ Copié');});
+}
+
+function toast(msg){
+  const el=document.getElementById('ts');
+  el.style.display='block'; el.textContent=msg;
+  clearTimeout(el._t); el._t=setTimeout(()=>el.style.display='none',4000);
+}
+
+// Default UI state: Lambert → WGS84 (recommended)
+setNoTr(false);
+upd();
+</script>
+</body>
+</html>
